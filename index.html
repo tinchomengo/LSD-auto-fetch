@@ -2,110 +2,159 @@
 
 <head>
     <title>Cryptocurrency Prices and Market Caps</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 400px;
+        }
+
+        th,
+        td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            font-weight: bold;
+        }
+    </style>
 </head>
 
 <body>
-    <label for="coin-select">Select a Coin:</label>
-    <select id="coin-select">
-        <option value="btc">Bitcoin (BTC)</option>
-        <option value="eth">Ethereum (ETH)</option>
-        <option value="ldo">Lido (LDO)</option>
-        <option value="fxs">Frax Share (FXS)</option>
-        <option value="rpl">Rocket Pool (RPL)</option>
-    </select>
-
-    <h1 id="coin-title"></h1>
-    <div id="coin-price" style="font-weight: bold; font-size: 18px;"></div>
-    <div id="coin-marketcap" style="font-weight: bold; font-size: 18px;"></div>
-    <div id="coin-percent-change" style="font-weight: bold; font-size: 18px;"></div>
-    <br>
+    <table>
+        <tr>
+            <th>ASSET</th>
+            <th>MARKETCAP</th>
+            <th>7D (USD)</th>
+        </tr>
+        <tr id="btc-row">
+            <td>Bitcoin (BTC)</td>
+            <td id="btc-marketcap"></td>
+            <td id="btc-percent-change"></td>
+        </tr>
+        <tr id="eth-row">
+            <td>Ethereum (ETH)</td>
+            <td id="eth-marketcap"></td>
+            <td id="eth-percent-change"></td>
+        </tr>
+        <tr id="ldo-row">
+            <td>Lido (LDO)</td>
+            <td id="ldo-marketcap"></td>
+            <td id="ldo-percent-change"></td>
+        </tr>
+        <tr id="fxs-row">
+            <td>Frax Share (FXS)</td>
+            <td id="fxs-marketcap"></td>
+            <td id="fxs-percent-change"></td>
+        </tr>
+        <tr id="rpl-row">
+            <td>Rocket Pool (RPL)</td>
+            <td id="rpl-marketcap"></td>
+            <td id="rpl-percent-change"></td>
+        </tr>
+    </table>
+<br>
     <button id="export-button">Export to CSV</button>
-    <script>
-        const coinSelect = document.getElementById('coin-select');
-        const coinTitle = document.getElementById('coin-title');
-        const coinPriceElement = document.getElementById('coin-price');
-        const coinMarketcapElement = document.getElementById('coin-marketcap');
-        const coinPercentChangeElement = document.getElementById('coin-percent-change');
-        const exportButton = document.getElementById('export-button');
 
-        coinSelect.addEventListener('change', () => {
-            const selectedCoin = coinSelect.value;
-            coinTitle.textContent = coinSelect.options[coinSelect.selectedIndex].text;
-            fetchSelectedCoinData(selectedCoin);
+    <script>
+        const coinData = [
+            { coin: 'btc', marketcapId: 'btc-marketcap', percentChangeId: 'btc-percent-change' },
+            { coin: 'eth', marketcapId: 'eth-marketcap', percentChangeId: 'eth-percent-change' },
+            { coin: 'ldo', marketcapId: 'ldo-marketcap', percentChangeId: 'ldo-percent-change' },
+            { coin: 'fxs', marketcapId: 'fxs-marketcap', percentChangeId: 'fxs-percent-change' },
+            { coin: 'rpl', marketcapId: 'rpl-marketcap', percentChangeId: 'rpl-percent-change' }
+        ];
+
+        coinData.forEach((coin) => {
+            fetchSelectedCoinData(coin.coin, coin.marketcapId, coin.percentChangeId);
         });
-        coinSelect.dispatchEvent(new Event('change'));
+
+        const exportButton = document.getElementById('export-button');
         exportButton.addEventListener('click', () => {
             exportToCSV();
         });
-        function fetchSelectedCoinData(selectedCoin) {
-            const priceUrl = `https://data.messari.io/api/v1/assets/${selectedCoin}/metrics/market-data`;
+
+        function fetchSelectedCoinData(selectedCoin, marketcapId, percentChangeId) {
             const marketcapUrl = `https://data.messari.io/api/v1/assets/${selectedCoin}/metrics`;
             const percentChangeUrl = `https://data.messari.io/api/v1/assets/${selectedCoin}/metrics`;
 
-            fetch(priceUrl)
-                .then((res) => res.json())
-                .then((messariRes) => {
-                    if (messariRes.data && messariRes.data.market_data) {
-                        const price = messariRes.data.market_data.price_usd;
-                        coinPriceElement.innerHTML = `Price: $${price.toLocaleString()}`;
-                    } else {
-                        throw new Error(`Unable to fetch ${selectedCoin} price`);
-                    }
-                })
-                .catch((error) => {
-                    console.error(`Error fetching ${selectedCoin} price:`, error.message);
-                });
+        fetch(marketcapUrl)
+            .then((res) => res.json())
+            .then((messariRes) => {
+            if (messariRes.data && messariRes.data.marketcap) {
+                const marketcap = messariRes.data.marketcap.current_marketcap_usd;
+                const roundedMarketcap = formatMarketcap(marketcap);
+                document.getElementById(marketcapId).textContent = `$${roundedMarketcap}`;
+            } else {
+                throw new Error(`Unable to fetch ${selectedCoin} market cap`);
+            }
+        })
+        .catch((error) => {
+            console.error(`Error fetching ${selectedCoin} market cap:`, error.message);
+        });
 
-            fetch(marketcapUrl)
-                .then((res) => res.json())
-                .then((messariRes) => {
-                    if (messariRes.data && messariRes.data.marketcap) {
-                        const marketcap = messariRes.data.marketcap.current_marketcap_usd;
-                        coinMarketcapElement.innerHTML = `Market Cap: $${marketcap.toLocaleString()}`;
-                    } else {
-                        throw new Error(`Unable to fetch ${selectedCoin} market cap`);
-                    }
-                })
-                .catch((error) => {
-                    console.error(`Error fetching ${selectedCoin} market cap:`, error.message);
-                });
+    function formatMarketcap(marketcap) {
+        const suffixes = ['', 'K', 'M', 'B'];
+        let suffixIndex = 0;
+
+        while (marketcap >= 1000 && suffixIndex < suffixes.length - 1) {
+            marketcap /= 1000;
+            suffixIndex++;
+        }
+
+        const roundedMarketcap = marketcap.toFixed(2);
+        return `${roundedMarketcap}${suffixes[suffixIndex]}`;
+    }
+
 
             fetch(percentChangeUrl)
                 .then((res) => res.json())
                 .then((messariRes) => {
                     if (messariRes.data && messariRes.data.roi_data && messariRes.data.roi_data.percent_change_last_1_week) {
                         const percentChange = messariRes.data.roi_data.percent_change_last_1_week.toFixed(3);
-                        coinPercentChangeElement.innerHTML = `Percent Change Last 1 Week: ${percentChange}%`;
+                        document.getElementById(percentChangeId).textContent = `${percentChange}%`;
                     } else {
                         throw new Error(`Unable to fetch ${selectedCoin} percent change`);
                     }
                 })
                 .catch((error) => {
                     console.error(`Error fetching ${selectedCoin} percent change:`, error.message);
-                    coinPercentChangeElement.innerHTML = `Unable to fetch percent change for ${selectedCoin}`;
+                    document.getElementById(percentChangeId).textContent = `Unable to fetch percent change for ${selectedCoin}`;
                 });
         }
-        function exportToCSV() {
-            const selectedCoin = coinSelect.value;
-            const price = coinPriceElement.textContent.split(":")[1].trim();
-            const marketcap = coinMarketcapElement.textContent.split(":")[1].trim().replace(/,/g, '');
-            const percentChange = coinPercentChangeElement.textContent.split(":")[1].trim();
 
-            const csvContent = `Coin,Price,Market Cap,Percent Change\n${selectedCoin},${price.replace(',', '')},"${marketcap}",${percentChange.replace('%', '')}`;
+        function exportToCSV() {
+            const csvRows = [];
+            const table = document.querySelector('table');
+            const rows = table.querySelectorAll('tr');
+
+            rows.forEach((row) => {
+                const csvColumns = [];
+                const cells = row.querySelectorAll('td');
+
+                cells.forEach((cell) => {
+                    csvColumns.push(cell.textContent);
+                });
+
+                const csvRow = csvColumns.join(',');
+                csvRows.push(csvRow);
+            });
+
+            const csvContent = `ASSET,MARKETCAP,7D (USD)\n${csvRows.join('\n')}`;
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
             link.setAttribute('href', url);
-            link.setAttribute('download', `${selectedCoin}_data.csv`);
+            link.setAttribute('download', 'coin_data.csv');
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
-
     </script>
-    <script src="dist/bundle.js"></script>
 </body>
 
 </html>
+
